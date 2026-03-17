@@ -345,7 +345,7 @@ cross join Department
 --päringu sisu
 select ColumnList
 from LeftTable
-joinType Rightable
+joinType RightTable
 on JoinCondition
 
 
