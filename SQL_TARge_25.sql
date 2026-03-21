@@ -287,10 +287,11 @@ from Employees group by Gender, City having Gender = 'Male'
 --näitab meile ainult need töötajad, kellel on palga summa üle 4000
 select * from Employees where Salary > 4000
 
---select City, sum(cast(Salary as INT) As [TotalSalary], Count(id) as [Total Empoyee(s)]
---from Employees
---Group by salary, City, name
---having sum(cast(Salary as INT)) > 4000
+--havinguga, näi´tab kus kui palju töötajaid üle 4000 palgaga
+select City, sum(cast(Salary as INT)) As [TotalSalary], Count(id) as [Total Empoyee(s)]
+from Employees
+Group by salary, City, Name
+having sum(cast(Salary as INT)) > 4000
 
 -- loome tabeli, milles hakatakse automaatselt nummberdama Id'd
 create table Test1
@@ -342,12 +343,12 @@ select name, Gender, Salary, DepartmentName
 from Employees
 cross join Department
 
---päringu sisu
+--päringu sisu (üldine näide)---------------
 select ColumnList
 from LeftTable
 joinType RightTable
 on JoinCondition
-
+--^^^^^^^^ JOIN üldine näide ^^^^^^^^--
 
 -- kuidas kuvada ainult need isikud, kellel on DepartmentName NULL
 select Name, Gender, Salary, DepartmentName
@@ -368,7 +369,7 @@ left join Department
 on Department.Id = DepartmentId
 where Department.Id is null
 
---- kuidas same department tabelis oleva rea, kus on NULL
+--- kuidas saame department tabelis oleva rea, kus on NULL
 select Name, Gender, Salary, DepartmentName
 from Employees
 right join Department
@@ -424,3 +425,76 @@ select PM.Name as ProductModel, P.Name as Product
 from SalesLT.Product P
 left join SalesLT.ProductModel PM
 on PM.ProductModelID = P.ProductModelID
+
+--harjutused JOIN, näidiseks
+-- rida 1: select [veerud, mida näidata]
+-- rida 2: from kust_tabelist_vask(left)_tabel
+-- rida 3: join_meetod (left join, right join, inner join, cross join, full join millise_tabeliga_parem(right)_tabel
+-- rida 4: on ühendus_tingimus (milliseid veerge kahe tabeli vahel võrrelda)
+-- rida 6: where tingimus (see rida kui täpsustada milliseid ridu näidata)
+select E.id, Name, Gender, Salary, D.DepartmentName, D.Location, D2.DepartmentHead
+from Employees E
+left join Department D
+on E.DepartmentID = D.ID
+left join Department D2 --teine tingimus, et liita nö kolmas tabel ühendusse
+on E.ManagerID = D2.ID
+
+-------------------- Erinevad joinid ---------------------
+select E.id, Name, Gender, Salary, D.DepartmentName, Location, DepartmentHead
+from Employees E
+left join Department D ---- näitab kõik vasakpoolse tabeli ridu, koos parempoolse väärtusega, kui parempoolse vaste puudub, siis parempoolne on NULL
+on E.DepartmentID = D.ID
+
+select E.id, Name, Gender, Salary, D.DepartmentName, Location, DepartmentHead
+from Employees E
+right join Department D ----- näitab kõiki vaskpoolse ridu millel on parempoolse vaste, kui vaste puudub, siis vasteta parempoolsed read koos vaskpoolseosas NULL väärtusega
+on E.DepartmentID = D.ID
+
+select E.id, Name, Gender, Salary, D.DepartmentName, Location, DepartmentHead
+from Employees E
+inner join Department D ---- näitab ridu millel on vasakul ja paremal väärtused olemas (EI ole NULL väärtusi) sama mis lihtsalt join
+on E.DepartmentID = D.ID
+
+select E.id, Name, Gender, Salary, D.DepartmentName, Location, DepartmentHead
+from Employees E
+full join Department D --- näitab molema poole kõik read, kõik millel on vaste ja millel pole vastet (null väärtused)
+on E.DepartmentID = D.ID
+
+select E.id, Name, Gender, Salary, D.DepartmentName, Location, DepartmentHead
+from Employees E
+cross join Department D --- ei kasuta on tingimust, ühendab tabelid andes iga parempoolse võimaliku rea väärtuse igale vasakpoolse tabeli reale
+
+-------täpsustatud tingimustega-----------
+select E.id, Name, Gender, Salary, D.DepartmentName, Location, DepartmentHead
+from Employees E
+left join Department D
+on E.DepartmentID = D.ID
+where D.id is NULL -- left joiniga näitab ainult left ridasid, millel seatud tingimus nõutud väärtus
+
+select E.id, Name, Gender, Salary, D.DepartmentName, Location, DepartmentHead
+from Employees E
+right join Department D
+on E.DepartmentID = D.ID
+where E.DepartmentID is NULL -- right joiniga näitab ainult right ridasid, millel seatud tingimus nõutud väärtus
+
+select E.id, Name, Gender, Salary, D.DepartmentName, Location, DepartmentHead
+from Employees E
+full join Department D
+on E.DepartmentID = D.ID
+where E.departmentID is NULL or D.ID is NULL -- full joiniga näitab lef and right ridu, millel seatud tingimus nõutud väärtus (or abil saab mitu tingimust
+
+-----self join, endaga ühendamine ----
+select E.id, E.Name, E.Gender, E.Salary, M.Name as Manager
+from Employees E
+left join Employees M -- ühendame sama tabeli endaga andes lühendite abil "uue" tabeli funktsiooni
+on E.ManagerID = M.ID
+
+select E.id, E.Name, E.Gender, E.Salary, M.Name as Manager
+from Employees E
+right join Employees M --- see jätab välja isikud kellel ei ole manageri ning näitab kes pole kellegi manager.
+on E.ManagerID = M.ID
+
+select E.id, E.Name, E.Gender, E.Salary, M.Name as Manager
+from Employees E
+full join Employees M --- näitab nii left kui ka right join tulemust koos.
+on E.ManagerID = M.ID
