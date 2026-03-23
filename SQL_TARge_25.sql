@@ -240,7 +240,7 @@ select name, Gender, Salary, DepartmentName from Employees
 left join Department
 on Employees.DepartmentId = Department.Id
 
---arvutame kõikide palgad kokku
+--arvutame kõikide palgad kokku -- muudame INT'iks cast abil cast(... as int)
 select sum(cast(Salary as int)) as SumSalary from Employees
 --min palga saja
 select min(cast(Salary as int)) MinSalary from Employees
@@ -498,3 +498,4 @@ select E.id, E.Name, E.Gender, E.Salary, M.Name as Manager
 from Employees E
 full join Employees M --- näitab nii left kui ka right join tulemust koos.
 on E.ManagerID = M.ID
+
