@@ -335,9 +335,9 @@ from Employees
 full join Department on Employees.DepartmentID = Department.Id
 
 -- cross join
--- kuvab kõik rad mõlemast tabelist, aga ei võta aluseks mingit veergu
+-- kuvab kõik read mõlemast tabelist, aga ei võta aluseks mingit veergu
 -- vaid lihtsalt kombineerib kõik read omavahel
--- kasutatakse harva, aga kui on vaja kmbineerida kõik
+-- kasutatakse harva, aga kui on vaja kombineerida kõik
 -- võimalikke komninatasioone kahe tabeli vahel, siis võib kasutada cross joini
 select name, Gender, Salary, DepartmentName
 from Employees
