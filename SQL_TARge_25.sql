@@ -500,8 +500,7 @@ full join Employees M --- näitab nii left kui ka right join tulemust koos.
 on E.ManagerID = M.ID
 
 -- rida 502
--- 4 tund
--- 31.03.2026
+-- 4 tund -- 31.03.2026
 select ISNULL('Sinu Nimi', 'No Manager') as Manager
 
 select coalesce(null, 'No Manager') as Manager
@@ -709,8 +708,186 @@ print 'Name of employee = ' + @Firstname
 
 ---
 declare @FirstName nvarchar(30)
-exec spGetNameById 9, @FirstName out
+exec spGetNameById 3, @FirstName output
 print 'Name of employee = ' + @FirstName
 -- ei anna tulemust, sest sp's on loogika viga. sest @ Id on parameeter, mis on mõeldud selleks,
 --et me saaksime sisestada id'd ja saada nime, aga sp's on loogika viga, sest see üritab määrata
 --@Id väärtuseks Id veeru väärtust, mis on vale
+
+--rida 718
+--tund 5 -- 07.04.26
+declare @FirstName nvarchar(30)
+exec spGetNameById 1, @FirstName out
+print 'Name of employee = ' + @FirstName
+
+sp_help spGetNamebyId
+
+create proc spGetNameById2
+@Id int
+as begin
+	return (select FirstName from Employees where Id = @Id)
+end
+
+declare @EmployeeName nvarchar(30)
+execute @EmployeeName = spGetNameById2 1
+print 'Name of the employee = ' + @EmployeeName
+
+alter proc spGetNameById2
+@Id int
+as begin
+	select FirstName from Employees where Id = @Id
+end
+--return annab ainult int tüüpi väärtuset, seega ei saa kasutada returni, et tagastada nime, mis
+--on nvarchar tüüpi
+
+----sisseehitatud string funktsioonid
+-- see konventeerib ASCII tähe väärtuse numbriks
+select ascii('A')
+-- kuvab A-tähr
+select char(65)
+
+--prindime kogu tähestiku välja A-st Z-ni
+--kasutame while tsüklit
+declare @x INT
+set @x = 65
+while @x <= ascii('Z')
+begin
+	print char(@x)
+	set @x = @x + 1
+end
+
+-- eemaldame tühjad kohad sulgudes
+select ltrim('                              Hello')
+
+-- tühikute eemaldamine sõnas
+select ltrim(FirstName) as FirstName, Middlename, Lastname
+from Employees
+
+--keerab kooloni sees olevad andmed vastupidiseks
+--vastavalt upper ja lower'ga saan muuta märkide suurust
+--reverse funktsioon keerab stringi tagurpidi
+select reverse(upper(ltrim(FirstName))) as FirstName, MiddleName,
+lower(Lastname), rtrim(ltrim(FirstName)) + ' ' + MiddleName + ' ' + 
+LastName as FullName from Employees
+
+
+--left, right, substring
+--left / right võta stringi vasakult / paremalt poolt neli esimest tähte
+select left('ABCDEF', 4)
+select right('ABCDEF', 4)
+
+--kuvab @tähemärgi asetust
+select CHARINDEX('@', 'sara@aaa.com')
+
+--alates viiendast tähemärgist võtab kaks tähte
+select substring('leo@bbb.com', 5, 2)
+
+--- @-märgist kuvab kolm tähemärki. Viimase nr saab määrata pikkust
+select substring('leo@bbb.com', charindex('@', 'leo@bbb.com') + 1, 3)
+
+---peale @-märki reguleerin tähemärkide pikkuse näitamist
+select substring('leo@bbb.com', CHARINDEX('@', 'leo@bbb.com') + 2,
+len('leo@bbb.com') - CHARINDEX('@', 'leo@bbb.com'))
+
+--saame teada domeeninimed emalides, kasutame Person tabelit
+--ja substringi, len ja charindex
+select substring(Email, CHARINDEX('@', Email) + 1,
+len(Email) - charindex('@', Email)) as Domainname
+from Person
+
+
+alter table Employees
+add Email nvarchar(20)
+
+update Employees
+set Email = 'Tom@aaa.com' where Id = 1
+update Employees
+set Email = 'Pam@bbb.com' where Id = 2
+update Employees
+set Email = 'John@aaa.com' where Id = 3
+update Employees
+set Email = 'Sam@bbb.com' where Id = 4
+update Employees
+set Email = 'Todd@bbb.com' where Id = 5
+update Employees
+set Email = 'Ben@ccc.com' where Id = 6
+update Employees
+set Email = 'Sara@ccc.com' where Id = 7
+update Employees
+set Email = 'Valarie@aaa.com' where Id = 8
+update Employees
+set Email = 'James@bbb.com' where Id = 9
+update Employees
+set Email = 'Russel@bbb.com' where Id = 10
+
+--lisame *-märgi alates teatud kohast
+select FirstName, LastName,
+	substring(Email, 1, 2) + replicate('*', 5) +
+	--peale tesist tähemärki paneb viis tärni
+	substring(Email, charindex('@', Email), len(Email)
+	- len(charindex('@', Email) + 1)) as MaskedEmail
+	--kuni@märgini paneb tärnid ja siis jätkab emaili näitamist on
+	--dünaamiline, sest kui emaili pikkus on erinev, siis paneb
+	--vastavalt tähed
+from Employees
+
+--kolm korda näitab stringis olevat väärtust
+select replicate ('Hello', 3)
+
+--kuidas sisestada tühikut kahe nime vahele, kasutada funktsiooni
+select space(5)
+--võtame tabeli Employees ja kuvame eesnimi ja perekonnanime vahele tühikut
+select FirstName + space(1) + LastName as Fullname from Employees
+
+--PATINDEX
+--sama, mis charindex, aga patindex võimaldab kasutada wildcardi
+--kasutame tabelit Employees ja leiame kõik read, kus emaili lõpus on aaa.com
+select Email, patindex('%@aaa.com',Email) As Position from Employees
+where patindex('%@aaa.com',Email) > 0
+--leiame kõik read, kus emaili lõpus on aaa.com või bbb.com
+
+
+--asendame emaili lõpus olevat domeeninimed, .com asemel .net'ga, kasutage replac'i
+select replace(Email, '.com', '.net') from Employees
+
+--soovin asendada peale esimest märki olevad tähed viie tärniga
+select Firstname, lastname, Email,
+stuff(Email, 2, 3, '*****') as StuffedEmail from Employees
+
+---ajaga seotud andmetüübid
+create table DateTest
+(c_time time,
+c_date date,
+c_smalldatetime smalldatetime,
+c_datetime datetime,
+c_datetime2 datetime2,
+c_datetimeoffset datetimeoffset
+)
+
+select * from DateTest
+
+--sinu masina kellaaeg
+select getdate() as CurrentDateTime
+
+insert into DateTest
+values (GETDATE(), GETDATE(), GETDATE(), GETDATE(), GETDATE(), GETDATE())
+
+update DateTest set c_datetimeoffset = '2026-04-07 12:13:09.6066667 +02:00'
+where c_datetimeoffset = '2026-04-07 17:13:09.6066667 +00:00'
+
+select CURRENT_TIMESTAMP, 'CURRENT_TIMESTAMP' --aja päring
+select SYSDATETIME(), 'SYSDATETIME()' --veel täpsem aja päring
+select SYSDATETIMEOFFSET(), 'SYSDATETIMEOFFSET()' --täpne aja ja ajavööndi päring
+select GETUTCDATE(), 'GETUTCDATE()' --UTC aja päring
+
+select isdate('asdasd') --tagastab 0, sest see ei ole kehtiv kuupäev
+select isdate(getdate()) --tagastab 1, sest on kuupäev
+select isdate('2026-04-07 17:13:09.6066667 +00:00') --tagastab 0 kuna mx kolm komakohta võib olla
+select isdate('2026-04-07 17:13:09.606') --tagastab 1
+select day(getdate()) --annab tänase päeva numbri
+select day('03/29/2026') --annab stringis oleva kp ja järjestus peab olema õige
+select month(getdate()) --kuu
+select month('03/29/2026') --kuu
+select year(getdate()) --aasta
+select year('03/29/2026') --aasta
+
