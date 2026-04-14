@@ -882,7 +882,7 @@ select GETUTCDATE(), 'GETUTCDATE()' --UTC aja päring
 
 select isdate('asdasd') --tagastab 0, sest see ei ole kehtiv kuupäev
 select isdate(getdate()) --tagastab 1, sest on kuupäev
-select isdate('2026-04-07 17:13:09.6066667 +00:00') --tagastab 0 kuna mx kolm komakohta võib olla
+select isdate('2026-04-07 17:13:09.6066667 +00:00') --tagastab 0 kuna max kolm komakohta võib olla
 select isdate('2026-04-07 17:13:09.606') --tagastab 1
 select day(getdate()) --annab tänase päeva numbri
 select day('03/29/2026') --annab stringis oleva kp ja järjestus peab olema õige
@@ -891,3 +891,207 @@ select month('03/29/2026') --kuu
 select year(getdate()) --aasta
 select year('03/29/2026') --aasta
 
+--rida 894
+--tund 6 -- 14.04.26
+select datename(day, '2026-04-07 17:13:09.606') --annab sõnes oleva päeva nime (kuupäev)
+select datename(weekday, '2026-04-07 17:13:09.606') --annab sõnes oleva nädalapäeva nime
+select datename(month, '2026-04-07 17:13:09.606') --annab sõnes oleva kuu nime
+select datename(week, '2026-04-07 17:13:09.606') --annab sõnes oleva kuupäeva nädala numbri
+
+create table EmployeesWithDates
+(
+	Id nvarchar(2),
+	Name nvarchar(20),
+	DateOfBirth datetime
+)
+
+insert into EmployeesWithDates (Id, Name, DateOfBirth)
+values (1, 'Sam', '1980-12-30 00:00:00.000'),
+(2, 'Pam', '1982-09-01 12:02:36.260'),
+(3, 'John', '1985-08-22 12:03:30.370'),
+(4, 'Sara', '1979-11-29 12:59:30.670')
+
+--kuidas võtta ühest veerust andmeid ja selle abil luua uued veerud
+select Name, DateOfBirth, datename(weekday, DateOfBirth) As [Day],
+	month(DateOfBirth) as MonthNumber,
+	datename(month, DateOfBirth) as [MonthName],
+	year(DateOfBirth) as [Year] from EmployeesWithDates
+
+select Datepart(weekday, '2026-04-07 17:13:09.606') -- annab sõnes oleva nädalapäeva numbri (USA süsteemis)
+select Datepart(month, '2026-04-07 17:13:09.606') -- annab sõnes oleva kuu numbri
+select dateadd(day, 20, '2026-04-07 17:13:09.606') --liidab sõnes olevale kp'le päevi
+select dateadd(day, -20, '2026-04-07 17:13:09.606') --lahutab sõnes olevast kp'st päevi
+select datediff(month, '04/30/2025', '01/31/2026') --annab kahe kp vahelist vahet kuudes
+select datediff(year, '04/30/2025', '01/31/2026') --annab kahe kp vahelist vahet aastates
+select datediff(day, '04/30/2025', '01/31/2026') --annab kahe kp vahelist vahet päevades
+
+create function fnComputeAge(@DOB datetime)
+returns nvarchar(50)
+as begin
+	declare @tempdate datetime, @years int, @months int, @days int  -- @ märk töhistab muutujat
+	select @tempdate = @DOB
+
+	select @years = datediff(year, @tempdate, getdate()) - case when (month(@DOB) > month(getdate())) or (month(@DOB))
+	= month(getdate()) and day(@DOB) > day(getdate()) then 1 else 0 end
+	select @tempdate = dateadd(year, @years, @tempdate)
+
+	select @months = datediff(month, @tempdate, getdate()) - case when day(@DOB) > day(getdate()) then 1 else 0 end
+	select @tempdate = dateadd(month, @months, @tempdate)
+
+	select @days = datediff(day, @tempdate, getdate())
+
+	declare @Age nvarchar(50)
+		set @Age = cast(@years as nvarchar(10)) + ' years, '
+		+ cast(@months as nvarchar(10)) + ' months, '
+		+ cast(@days as nvarchar(10)) + ' days old'
+	return @Age
+end
+
+--saame vanuse välja arvutada, kui kasutame fnComupteAge funktsiooni
+select Name, DateOfBirth, dbo.fnComputeAge(DateOfBirth) as Age
+from EmployeesWithDates
+
+--kui kasutame seda funktsiooni, siis saame teada tänase päeva vahet stringis olevaga
+select dbo.fnComputeAge('03/23/2008')
+
+--nr peale DOB muutujat näitab, et missugusena järjestuses me tahame näidata veeru sisu
+select Id, Name, DateOfBirth,
+convert(nvarchar, DateOfBirth, 126) as ConvertedDOB
+from EmployeesWithDates
+
+select Id, Name, Name + ' - ' + cast(Id as nvarchar) as [Name-ID]
+from EmployeesWithDates
+
+select cast(getdate() as date) -- tänane kp
+select convert(date, getdate()) --tänane kp
+
+--matemaatilised funktsioonid
+select abs(-101.5) --absoluutväärtus, tagastab 101.5
+select ceiling(101.5) --ümardab üles, tagastab 102
+select ceiling(-101.5) --ümardab üles positiivsema nr poole, tagastab -101
+select floor(101.5) --ümardab alla, tagastab 101
+select floor(-101.5) --ümardab alla negatiivsema poole, tagastab 102
+select round(101.556, 1) --ümardab lähima numbrini, teine väärtus ütleb mitu komakohta tagastab 101.5
+select power(2, 4) --tagastab 16, astendab 1. sisendit 2. sisendiga. 2 astmel 4 e 2*2*2*2
+select square(5) --tagastab 25, võtab arvu ja korrutab iseendaga
+select sqrt(25) -- tagastab 5, võtab arvu ja leiab selle ruutjuure
+
+select rand() --tagastab juhusliku vahemiku 0 kuni 1
+--oleks vaja, et iga kord annab rand meile ühe täisarva 1 kuni 100
+select ceiling(rand() * 100)
+select round((rand() * 99) + 1, 0)
+
+--annab juhusliku numbri vahemikus 1 kuni 1000
+--ja teeb seda 10 korda, et näha erinevaid numbreid
+declare @x INT
+set @x = 1
+while @x <= 10
+begin
+	print round((rand() * 999) + 1, 0)
+	set @x = @x + 1
+end
+
+select round(850.5546, 2, 1) --ümardab alla ja ära ümardatud numbrid annab 0'na, tagastab 850.5500
+select round(850.556, 1, 1)
+select round(850.556, -2) -- ümardab kuni lähima sajani, tagastab 900.00
+select round(850.556, -1) -- ümardab kuni lähima kümnendini, tagastab 850.00
+
+create function dbo.CalculateAge (@DOB date)
+returns int
+as begin
+declare @Age int
+
+set @Age = datediff(year, @DOB, getDate()) -
+	case
+		when (month(@DOB) > month(getdate())) or
+			(month(@DOB) > month(getdate()) and day(@DOB) > day(getdate()))
+		then 1
+		else 0
+		end
+	return @Age
+end
+-----
+execute CalculateAge '10/25/1980'
+
+---arvutab välja, kui vana on isik ja võtab arvesse, kas isiku sünnipäev on juba
+---sel aastal olnud või mitte. Antud juhul näitab, kes on üle 40 aasta vanad.
+select Id, dbo.CalculateAge(DateOfBirth) as Age
+from EmployeesWithDates
+where dbo.CalculateAge(DateOfBirth) > 40
+
+---inline table valued function
+--teha EmployeesWithDates tabelisse
+--uus veerg nimega DepartmentID int,
+--ja teine veerg on Gender nvarchat(10)
+
+alter table EmployeesWithDates
+add DepartmentID int,
+Gender nvarchar(10)
+
+insert into EmployeesWithDates
+values (5, 'Todd', '1978-11-29 12:59:30.670', 1, 'Male')
+update EmployeesWithDates set Gender = 'Male', departmentId = 1
+where Id = 1
+update EmployeesWithDates set Gender = 'Female', departmentId = 2
+where Id = 2
+update EmployeesWithDates set Gender = 'Male', departmentId = 1
+where Id = 3
+update EmployeesWithDates set Gender = 'Female', departmentId = 3
+where Id = 4
+
+--scalar function e skaleeritav funktsioon annab mingis vahemikus olevaid
+--väärtusi, aga inline table valued function tagastab tabeli
+--ja seal ei kasutata begin ja endi vahele kirjutamist,
+--vaid lihtsalt kirjutad selecti.
+create function fn_EmployeesByGender(@Gender nvarchar(10))
+returns table
+as
+return (select Id, Name, DateOfBirth, DepartmentId, Gender
+		from EmployeesWithDates
+		where Gender = @Gender)
+
+--soovime vaadata kõiki naisi EmployeesWithDates tabelist
+select * from fn_EmployeesByGender('Female')
+
+--soocin ainult näha Pam ja kasutan funktsiooni fn_EmployeesByGender
+select * from fn_EmployeesByGender('Female') where Name = 'Pam'
+
+--kahest erinevast tabelist andmete võtmine ja koos kuvamine
+--esimene on funktsioon ja teine on Department tabel
+select Name, Gender, DepartmentName from fn_EmployeesByGender('Male') E
+join Department D on D.Id = E.DepartmentId
+
+--inline funktsioon
+create function fn_GetEmployees()
+returns table as
+return (select Id, Name, cast(DateOfBirth as date)
+	as DOB
+	from EmployeesWithDates)
+
+select * from fn_GetEmployees()
+
+--multi statement table valued function
+create function fn_MS_GetEmployees()
+returns @Table Table (Id int, Name nvarchar(20), DOB date)
+as begin
+	insert into @Table
+	select Id, Name, cast(DateOfBirth as date) from EmployeesWithDates
+
+	return
+end
+
+select * from fn_MS_GetEmployees()
+
+--inline tabeli funktsioonid on paremini töötamas kuna käisitletakse vaatena
+--Multi statement tabeli valued funktsioonid on nagu tavalised funktsiooid,
+--pm on tegemist stored procedurega ja see võib olla aeglasem
+--sest see ei saa kasutada vaate optimeerimist e kulutab rohkem ressurssi
+select * from EmployeesWithDates
+update fn_GetEmployees() set Name = 'Sara' where Id = 4 --saab muuta andmeid
+select * from EmployeesWithDates
+
+update fn_MS_GetEmployees set Name = 'Sara' where Id = 4 --multi state puhul ei saa andmed muuta valued funktsioonis,
+--sest see on nagu stored procedure
+
+--rida 1096
+--tund 8 --21.04.26
