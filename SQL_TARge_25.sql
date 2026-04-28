@@ -1345,3 +1345,323 @@ values
 (3, 'John', 'Menco', 4500, 'Male', 'London')
 
 --rida 1347
+--tund 8 28.04.26
+
+---
+-- 1. Vaikimisi primaarvõti loob unikaalse klastris oleva indeksi, samas unikaalne piirang
+-- loob unikaalse mitte-klasteris oleva indeksi
+-- 2. Unkikaalset indeksit või piirangut ei saa luua olemasolevasse tabelisse, kui tabel juba
+-- väärtusi võtmeveerus
+-- 3. Vaikimisi korduvaid väärtusi ei ole veerus lubatud, kui peaks olema unikaalne indeks või piirang.
+-- Nt, kui tahad sisestada 10 rida andmeid, millest 5 sisaldavad korduvaid andmeid, siis kõik 10
+--lükatakse tagasi. Kui soovin ainult 5 rea tagasi lükkamist ja ülejäänud 5 rea sisestamist, siis selleks
+-- kasutatakse IGNORE_DUP_KEY
+
+--koodinäide
+create unique index IX_EmployeeFirstName
+on EmployeeFirstName(City)
+with ignore_dup_key
+
+select * from EmployeeFirstName
+
+insert into EmployeeFirstName
+values
+(3, 'John', 'Menco', 2345, 'Male', 'London'),
+(4, 'John', 'Menco', 1234, 'Male', 'London1'),
+(4, 'John', 'Menco', 3456, 'Male', 'London1')
+-- enn ignore käsku oleks kõik kolm rida tagasi lükatud, aga nüüd läks keskmine rida läbi kuna linna nimi on unikaalne
+
+--view
+--view on salvestatud SQL'i päring. Saab käsitleda ka virtuaalse tabelina
+
+select FirstName, Salary, Gender, DepartmentName
+from Employees
+join Department
+on Employees.DepartmentId = Department.Id
+
+---loome view
+create view vEmployeesByDepartment
+as
+select FirstName, Salary, Gender, DepartmentName
+from Employees
+join Department
+on Employees.DepartmentId = Department.Id
+
+--view päringu esile kutsumine
+select * from vEmployeesByDepartment
+
+-- view ei salvesta andmeid vaikimisi seda tasub võtta, kui salvestatud virtuaalse tabelina
+
+-- milleks vaja:
+-- saab kasutada andmebaasi skeemi keerukuse lihtsustamiseks, mitte IT-inimesele
+-- piiratud ligipääs andmetele, ei näe kõiki veerge
+
+
+--teeme view, kus näeb ainult IT-tootajaid, view nimi on vITEmployeesInDepartment
+create view vITEmployeesInDepartment
+as
+select FirstName, Salary, Gender, DepartmentName
+from Employees
+join Department
+on Employees.DepartmentId = Department.Id
+where DepartmentName = 'IT'
+
+select * from vITEmployeesInDepartment
+
+--veeru taseme turvalisus peale selecti määratled veergude näitamise ära
+create view vEmployeeInDepartmentSalaryNoShow
+as
+select FirstName, Gender, DepartmentName
+from Employees
+join Department
+on Employees.DepartmentId = Department.Id
+
+select * from vEmployeeInDepartmentSalaryNoShow
+
+--saab kasutada esitlemaks koondandmeid ja üksikasjalike andmeid view, mis tagastab sumeeritud andmeid
+create view vEmployeesCountByDepartment
+as
+select DepartmentName, count(FirstName) as Total
+from Employees
+join Department
+on Employees.DepartmentId = Department.Id
+group by DepartmentName
+
+
+select * from vEmployeesCountByDepartment
+--kui soovid vaadata view sisu
+sp_helptext vEmployeesCountByDepartment
+--muutmiseks kasutame sõna alter
+alter view vEmployeesCountByDepartment
+--kustutamine
+drop view vEmployeesCountByDepartment
+
+--kasutame view'd andmete uuendamiseks
+create view vEmployeesDataExpectSalary
+as
+select Id, FirstName, Gender, DepartmentId
+from Employees
+
+select * from vEmployeesDataExpectSalary
+
+-- muutke Id 2 olev rida ja uus eesnimi on Tom
+update vEmployeesDataExpectSalary
+set FirstName = 'Tom'
+where id = 2
+
+--kustutame ja sisestame andmeid
+delete from vEmployeesDataExpectSalary where Id = 2
+insert into vEmployeesDataExpectSalary (id, Gender, DepartmentId, FirstName)
+values (2, 'Female', 2, 'Pam')
+
+---indekseeritud view
+--MS sql-s on indekseeritud view nime all ja Oracle's materjaliseeritud view
+
+create table Product
+(Id int primary key,
+Name nvarchar(20),
+UnitPrice int
+)
+
+Insert into Product values
+(1, 'Book', 20),
+(2, 'Pens', 14),
+(3, 'Pencils', 11),
+(4, 'Clips', 10)
+
+create table ProductSales
+(
+Id int,
+QuantitySold int
+)
+
+insert into ProductSales values
+(1, 10),
+(3, 23),
+(4, 21),
+(2, 12),
+(1, 13),
+(3, 12),
+(4, 13),
+(1, 11),
+(2, 12),
+(1, 14)
+
+--loome view, mis annab meile veerud TotalSales ja TotalTransaction
+create view vTotalSalesByProduct
+with schemabinding
+as
+select Name,
+sum(isnull((QuantitySold * UnitPrice), 0 )) as TotalSales,
+COUNT_BIG(*) as TotalTransactuions
+from dbo.ProductSales
+join dbo.Product
+on dbo.Product.Id = dbo.ProductSales.Id
+group by Name
+
+Select * from vTotalSalesByProduct
+
+--- kui soovid luua indeksi view sisse, siis peab järgima teatud reegleid
+-- 1. view tuleb luua koos schemabinding'ga
+-- 2. kui lisafunktsioon select list viitab väljendile ja selle tulemuseks võib olla NULL,
+-- siis asendusväärtus peaks olema täpsustatud. Antud juhul kasutasime ISNULL funktsiooni
+--asendamaks NULL väärtust.
+-- 3. Kui Groupby on täpsustatud, siis view select list peab sisaldama COUNT_BIG(*) väljendit
+-- 4. Baastabaleis peaksid view'd olema viidatud kaheosalise nimega e antud juhul dbo.Produvt ja
+-- dbo.ProductSales.
+-- COUNT_BIG vs COUNT?
+-- COUNT_BIG tagastab bigint väärtuse, mis on suurem
+
+create unique clustered index UIX_vTotalSalesByProduct_Name
+on vTotalSalesByProduct(Name)
+--paneb selle view tähestikulisse järjestusse
+
+select * from vTotalSalesByProduct
+
+
+--view piirangud
+create view vEmployeeDetails
+@Gender nvarchar(20)
+as
+select Id, FirstName, Gender, DepartmentId
+From Employees
+where Gender = @Gender
+
+--vaatesse ei saa panna parameetreid e antud juhul Gender
+
+create function fnEmployeeDetails(@Gender nvarchar(20))
+returns table
+as return
+(select id, FirstName, Gender, DepartmentId
+from Employees where Gender = @Gender)
+
+select * from fnEmployeeDetails('male')
+
+-- order by kasutamine
+create view vEmployeeDetailsSorted
+as
+select Id, FirstName, Gender, Department
+from Employees
+order by Id
+--order by'd ei saa kasutada view sees
+
+--temp table kasutamine
+create table ##TestTempTable(Id int, FirstName nvarchar(20), Gender nvarchar(10))
+
+insert into ##TestTempTable values
+(101, 'Martin', 'Male'),
+(102, 'Joe', 'Male'),
+(103, 'Pam', 'Female'),
+(104, 'james', 'Male')
+
+--tehke view, mis kasutab ##TestTempTable
+--view nimi on vOnTempTable
+create view vOnTempTable
+as
+select Id, FirstName, Gender
+from ##TestTempTable
+-- temp tabel's eo saa kasutada view'd
+
+--triggerid
+-- DML triggerid
+-- kokku on kolme tüüpi: DML, DDl ja LOGON
+
+--trigger on stored procedure eriliik, mis automaatselt käivitub,
+-- kui mingi tegevus peaks andmebaasis aset leidma
+
+--DML - data manipulation language
+-- DML'i põhilised käsklused: insert, update ja delete
+
+--DML triggerid saab klassifitseerida kahte tüüpi:
+-- 1. After trigger (kutsutakse ka FOR triggeriks)
+-- 2. Instead of trigger (selmet trigger e selle asemel trigger)
+
+-- after trigger käivitub peale sündmust, kui kuskilon tehtyd insert, update ja delete
+
+create table EmployeeAudit
+(
+Id int identity(1,1) primary key,
+AuditData nvarchar(1000)
+)
+
+--peale iga töötaja sisestamist tahame teada saada töötaja Id-d päeva ning aega(millal sisestati)
+-- kõik andmed tulevad EmployeeAudit tabelisse
+
+create trigger trEmployeeForInsert
+on Employees
+for insert
+as begin
+declare @Id int
+select @Id = Id from inserted
+insert into EmployeeAudit
+values ('New employee with Id = ' + cast(@Id as nvarchar(5)) + ' is added at ' +
+cast(getdate() as nvarchar(20)))
+end
+
+select * from Employees
+insert into Employees values
+(11, 'Bob', 'Blob', 'Bomb', 'Male', 3000, 1, 3, 'bob@bob.com')
+
+select * from EmployeeAudit
+
+create trigger trEmployeeDorDelete
+on Employees
+for delete
+as begin
+	declare @Id int
+	select @Id = Id from deleted
+	
+	insert into EmployeeAudit
+	values('An existing employee with Id = ' + cast(@Id as nvarchar(5)) +
+	' is deleted at ' + cast(getdate() as nvarchar(20)))
+end
+
+delete from Employees where Id = 11
+
+select * from EmployeeAudit
+
+--- update trigger
+
+create trigger trEmployeeForUpdate
+on Employees
+for update
+as begin
+	--muutujate deklareerimine
+	declare @Id int
+	declare @OldGender nvarchar(20), @NewGender nvarchar(20)
+	declare @OldSalary int, @NewSalary int
+	declare @OldDepartmentId int, @NewDepartmentId int
+	declare @OldManagerId int, @NewManagerId int
+	declare @OldFirstName nvarchar(20), @NewFirstName nvarchar(20)
+	declare @OldMiddleName nvarchar(20), @NewMiddleName nvarchar(20)
+	declare @OldLastName nvarchar(20), @NewLastName nvarchar(20)
+	declare @OldEmail nvarchar(50), @NewEmail nvarchar(50)
+
+	--muutuja, kuhu läheb lõpptekst
+	declare @AuditString nvarchar(1000)
+
+	--laeb kõik uuendatud andmed temp tabeli alla
+	select * into #TempTable
+	from inserted
+
+	--käib läbi kõik andmed temp tabel'is
+	while(exists(select Id from #TempTable))
+	begin
+		set@AuditSting = ''
+	--selekteerib esimese rea andmed temp table'ist
+	select top 1 @Id = Id, @NewGender = Gender,
+	@NewSalary = Salary, @NewDepartmentId = DepartmentId,
+	@NewManagerId = ManagerId, @NewFirstName = FirstName,
+	@NewMiddleName = MiddleName, @NewLastName = LastName,
+	@NewEmail = Email
+	from delete where Id = @Id
+
+	--toimub võrdlus veergude osas, et kas toimus andmete muutmine
+	set @AuditString = 'Employee with Id = ' + cast(@Id as nvarchar(4)) + ' changed '
+	if(@OldGender <> @NewGender)
+		set @AuditString = @AuditString + ' Gender from ' + @OldGender + ' to ' +
+		@NewGender
+
+	if(@OldSalary <> @NewSalary)
+		set @AuditString = @AuditString + ' Salary from ' + cast(@OldSalary as nvarchar(20)) + ' to ' +
+		@NewSalary
