@@ -1951,3 +1951,288 @@ select * from EmployeeCountBy_Payroll_HR_Dept
 
 --- Lihtsam testimine: Kuna iga osa on eraldi nimega plokk, on konkreetseid loogika osi lihtsam
 --- kontrollida ja veatuvastust teha.
+
+--- korduv CTE
+--- CTE, mis iseendale viitab, kutsutakse korduvaks CTE-ks kui tahad andmeid nädata hierarhiliselt
+
+
+--Tund 10 -- 12.05.2026
+--rida 1960
+drop table Employee
+
+create table Employee
+(
+	EmployeeID int primary key,
+	Name nvarchar (30),
+	ManagerId int
+)
+
+insert into Employee
+values
+(1, 'Tom', 2),
+(2, 'Josh', Null),
+(3, 'Mike', 2),
+(4, 'John', 3),
+(5, 'Pam', 1),
+(6, 'Mary', 3),
+(7, 'James', 1),
+(8, 'Sam', 5),
+(9, 'Simon', 1)
+
+select * from Employee
+
+-- üks võimalus on teha seda self joiniga, kuvada NULL veeru asemel Super Boss
+select Emp.Name as [Employee Name],
+isnull(Manager.Name, 'Super Boss') as [Manager Name]
+from dbo.Employee Emp
+left join Employee Manager
+on Emp.ManagerId = Manager.EmployeeId
+
+--kasutame CTE
+with EmployeesCTE(EmployeeId, Name, ManagerId, [Level])
+as
+(
+	select EmployeeId, Name, ManagerId, 1
+	from Employee
+	where ManagerId is null
+
+	union all
+
+	select Employee.EmployeeId, Employee.Name,
+	Employee.ManagerId, EmployeesCTE.[Level] + 1
+	from Employee
+	join EmployeesCTE
+	on Employee.ManagerId = EmployeesCTE.EmployeeId
+)
+
+select EmpCTE.Name as Employee,
+isnull(MgrCTE.Name, 'Super Boss') as [Manager Name],
+EmpCTE.[Level]
+from EmployeesCTE EmpCTE
+left join EmployeesCTE MgrCTE
+on EmpCTE.ManagerId = MgrCTE.EmployeeId
+
+-- PIVOT
+create table ProductSales
+(
+	SalesAgent nvarchar(20),
+	SalesCountry nvarchar(20),
+	SalesAmount int
+)
+
+insert into ProductSales
+values
+('Tom', 'UK', 200),
+('John', 'US', 180),
+('John', 'UK', 260),
+('David', 'India', 450),
+('Tom', 'India', 350),
+('David', 'US', 200),
+('Tom', 'US', 130),
+('John', 'India', 540),
+('John', 'UK', 120),
+('David', 'UK', 220),
+('John', 'UK', 420),
+('David', 'US', 320),
+('Tom', 'US', 340),
+('Tom', 'UK', 660),
+('John', 'India', 430),
+('David', 'India', 230),
+('David', 'India', 280),
+('Tom', 'UK', 480),
+('John', 'UK', 360),
+('David', 'UK', 140)
+
+
+select * from ProductSales
+
+select SalesCountry, SalesAgent, sum(SalesAmount) as Total
+from ProductSales
+group by SalesCountry, SalesAgent
+order by SalesCountry, SalesAgent
+
+-- nüüd päring pivot
+select SalesAgent, India, US, UK
+from ProductSales
+pivot (
+	sum(SalesAmount)
+	for SalesCountry in (India, US, UK)
+) As PivotTable
+
+--- pivot võimaldab meil muuta ridu veergudeks ja teha andmete koondamist
+
+-- lisada veerg nimega Id int primary key
+alter table ProductSales
+add Id int identity(1, 1) primary key
+
+--- nüüd on veerg Id olmas aga see ei mõjuta pivotit, kuna me ei k..
+-- võrreldes eelmise päringuga, tulemus teistsugune
+select SalesAgent, India, US, UK
+from (select SalesAgent, SalesCountry, SalesAmount
+	from ProductSales) as SourceTable
+pivot (
+	sum(SalesAmount) for SalesCountry in (India, US, UK)
+) as PivotTable
+
+-- Transactions
+
+-- transaction on SQL'i käskluste kogum, mis täidetakse ühtse tööüksusena.
+-- kontrollib vigu. Kui on viga, siis taastab algse oleku
+
+create table MailingAddress
+(
+	Id int not null primary key,
+	EmployeeNumber int,
+	HouseNumber nvarchar(50),
+	StreetNumber nvarchar(50),
+	City nvarchar(20),
+	PostalCode nvarchar(20)
+)
+
+insert into MailingAddress
+values (1, 101, '#10', 'King Street', 'London', 'CR25DW')
+
+create table PhysicalAadress
+(
+	Id int not null primary key,
+	EmployeeNumber int,
+	HouseNumber nvarchar(50),
+	StreetNumber nvarchar(50),
+	City nvarchar(20),
+	PostalCode nvarchar(20)
+)
+
+insert into PhysicalAadress
+values (1, 101, '#10', 'King Street', 'Londoon', 'CR25DW')
+
+create proc spUpdateAddress
+as begin
+	begin try
+		begin transaction
+			update MailingAddress set City = 'LONDON'
+			where MailingAddress.Id = 1 and EmployeeNumber = 101
+
+			update MailingAddress set City = 'LONDON'
+			where MailingAddress.Id = 1 and EmployeeNumber = 101
+		commit transaction
+	end try
+	begin catch
+		rollback tran
+	end catch
+end
+---
+spUpdateAddress
+
+select * from MailingAddress
+select * from PhysicalAddress
+
+
+--kasutame sama sp'd aga muudame sisu
+Alter proc spUpdateAddress
+as begin
+	begin try
+		begin transaction
+			update MailingAddress set City = 'LONDON 12'
+			where MailingAddress.Id = 1 and EmployeeNumber = 101
+
+			update PhysicalAddress set City = 'LONDON LONDON'
+			where PhysicalAddress.Id = 1 and EmployeeNumber = 101
+		commit transaction
+	end try
+	begin catch
+		rollback tran
+	end catch
+end
+
+
+-- juhul kui teine uuendus ei lähe läbi, siis esimene uuendus ei lähe läbi,
+-- kuna meil on transaction sees
+
+--- transaction ACID test
+
+-- edukas transaction peab läbima ACID testi
+-- A - atomic e aatomlikus
+-- C - consistent e järjepidevus
+-- I - isolated e isoleeritus
+-- D - durable e vastupidav
+
+--- Atomic - kõik tehingud transactionis on kas edukalt täidetud või need
+-- lükatakse tagasi. Nt Mõlemad käsud peaksid alati õnnestuma. Andmebaas teeb
+-- sellisel juhul...
+
+--- Consistent...
+
+--- Isolated...
+
+--- Durable...
+
+
+--- subqueries
+--tabel tühjaks
+truncate table Product
+truncate table ProducSales
+
+create table ProductSales
+(
+	Id int primary key identity,
+	ProductId int foreign key references Product(Id),
+	UnitPrice int,
+	QuantitySold int
+)
+
+create table Product
+(
+	Id int identity primary key,
+	name nvarchar(50),
+	Description nvarchar(250)
+)
+
+insert into Product values
+('TV', '52 inch black color TV'),
+('Laptop', 'Very thin silver color laptop'),
+('Desktop', 'HP high performance desktop')
+
+insert into ProductSales values
+(3, 450, 5),
+(2, 250, 7),
+(3, 450, 4),
+(3, 450, 9)
+
+select * from Product
+select * from ProductSales
+
+--- kirjutame päringu, mis annab infot müümata toodetest
+select Id, Name, Description
+from Product
+where Id not in (select distinct ProductId from ProductSales)
+-- distinct tagastab ainult unikaalsed väärtused
+
+-- enamus juhtudel saab asendada subquerit JOIN'ga
+--teeme sama päringut, aga JOIN'ga
+select Product.Id, Name, Description
+from Product
+left join ProductSales
+on Product.Id = ProductSales.ProductId
+where ProductSales.ProductId is null
+
+-- teeme subqueri, kus kasutame select'i. Kirjutame päringu, kus saame teada
+-- Name ja TotalQuantity veeru andmed
+select Name,
+(select sum(QuantitySold) from ProductSales where ProductId = Product.Id) as
+TotalQuantity
+from Product
+order by Name
+
+-- sama tulemus JOIÑ'ga
+select Name, sum(QuantitySold) as TotalQuantity
+from Product
+left join ProductSales
+on Product.Id = ProductSales.ProductId
+group by Name
+order by Name
+
+-- subqueryt saab subquery sisse panna
+-- subquerid on alati sulgudes ja neid nimetatakse sisemisteks päringuteks
+
+-- rida 2237
+-- tund 11 -- 19.05.2026
