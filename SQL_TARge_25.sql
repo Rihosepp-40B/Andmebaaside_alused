@@ -595,7 +595,7 @@ Union all
 select * from UKCustomers
 order by Name
 
---stored procedure
+--stored procedure ---------------- STORED PROCEDURE -------------------------------
 --salvestatud protseduurid on SQL'i koodid, mis on salvestatud andmebaasis ja mida saab
 --käivitada, et teha mingi kindel töö ära
 create procedure spGetEmployees
@@ -925,6 +925,9 @@ select datediff(month, '04/30/2025', '01/31/2026') --annab kahe kp vahelist vahe
 select datediff(year, '04/30/2025', '01/31/2026') --annab kahe kp vahelist vahet aastates
 select datediff(day, '04/30/2025', '01/31/2026') --annab kahe kp vahelist vahet päevades
 
+
+----------- FUNKTSIOONID FUNCTIONS --------------------
+
 create function fnComputeAge(@DOB datetime)
 returns nvarchar(50)
 as begin
@@ -1053,7 +1056,7 @@ return (select Id, Name, DateOfBirth, DepartmentId, Gender
 --soovime vaadata kõiki naisi EmployeesWithDates tabelist
 select * from fn_EmployeesByGender('Female')
 
---soocin ainult näha Pam ja kasutan funktsiooni fn_EmployeesByGender
+--soovin ainult näha Pam ja kasutan funktsiooni fn_EmployeesByGender
 select * from fn_EmployeesByGender('Female') where Name = 'Pam'
 
 --kahest erinevast tabelist andmete võtmine ja koos kuvamine
@@ -1160,7 +1163,7 @@ as begin
 	return (select Name from dbo.EmployeesWithDates where Id = @id)
 end
 
---temporary tables
+--temporary tables ------- TEMP TABLE, AJUTISED TABELID ---------
 --need on tabelid, mis on loodud ajutiselt ja kustutatakse automaatselt
 --neid on kahte tüüpi: local temporary tables ja global temporary tables
 --#'ga algavad local ja ##'ga global temporary tables
@@ -1202,7 +1205,7 @@ create table ##GlobalPersonDetails(Id int, Name nvarchar(20))
 --local on nähtav ainult sessioonis mis selle tegi ja suletakse kui ühendus suletakse
 --global on nähtav kõigile sessioonidele, kustutatakse kui viimane viitav sessioon suletakse.
 
---index
+--index ------------------- INDEX INDEKS -----------------
 create table EmployeesWithSalary
 (
 Id int primary key,
@@ -1244,8 +1247,7 @@ drop index EmployeeWithSalary.IX_Employee_Salary
 --9. Veergude indeksid
 --10. Välja arvatud veergudega indeksid
 
---Klastris olev indeks määrab ära tabelis oleva füüsilise järjestuse ja
---selle tulemusel saab tabelis olla ainult üks klastris olev indeks kui
+--Klastris olev indeks määrab ära tabelis oleva füüsilise järjestuse ja  selle tulemusel saab tabelis olla ainult üks klastris olev indeks kui
 --lisad primaarvõtme, siis luuakse automaatselt klastris olev indeks
 
 create table EmployeeCity
@@ -1269,14 +1271,13 @@ values (3, 'John', 4500, 'Male', 'New Yourk'),
 
 select * from EmployeeCity
 
---klastris olevad ineksid dikteerivad säilitatud andmete järjestuse tabelis ja
---seda saab klastrite puhul olla ainult üks
+--klastris olevad indeksid dikteerivad säilitatud andmete järjestuse tabelis ja seda saab klastrite puhul olla ainult üks
 create clustered index IX_EmployeeCity_Name
 on EmployeeCity(Name)
 --annab veateate, et tabelis saab olla inult üks klastris olev indeks, kui soovid
 --uut indeksit luua, siis kustuta olemasolev
 
---saame luua inult ühe klasteris oleva indeksi tabeli peale. Klastris olev indeks
+--saame luua ainult ühe klasteris oleva indeksi tabeli peale. Klastris olev indeks
 --on analoogne telefoni numbrile
 --enne seda päringut kustutasime primaarvõtme indeksi ära
 select * from EmployeeCity
@@ -1290,12 +1291,9 @@ exec sp_helpindex EmployeeCity
 Select * from EmployeeCity
 
 --Erinevused kahe indeksi vahel
---1. ainult üks klastris olev indeks saaab olal tabeli peale,
---mitte-klastris olevadi indekseid saab olla mittu
---2. klastris olevad indeksid on kiiremad kuna indeks peab tagasi viitama tabelile
---Juhul, kui selekteeritud veerg ei ole olemas indeksis
---3. klastris olev indeks määratleb ära tabeli ridade salvestusjärjestuse
---ja ei nõua kettal lisa ruumi- Samas mitte klastris olevad indeksid on
+--1. ainult üks klastris olev indeks saaab olll tabeli peale, mitte-klastris olevaid indekseid saab olla mittu
+--2. klastris olevad indeksid on kiiremad kuna indeks peab tagasi viitama tabelile. Juhul, kui selekteeritud veerg ei ole olemas indeksis
+--3. klastris olev indeks määratleb ära tabeli ridade salvestusjärjestuse ja ei nõua kettal lisa ruumi- Samas mitte klastris olevad indeksid on
 --salvestatud tabelist eraldi ja nõuab lisa ruumi.
 
 create table EmployeeFirstName
@@ -1371,7 +1369,7 @@ values
 (4, 'John', 'Menco', 3456, 'Male', 'London1')
 -- enn ignore käsku oleks kõik kolm rida tagasi lükatud, aga nüüd läks keskmine rida läbi kuna linna nimi on unikaalne
 
---view
+--view -------------VIEW , VAADE ---------------------
 --view on salvestatud SQL'i päring. Saab käsitleda ka virtuaalse tabelina
 
 select FirstName, Salary, Gender, DepartmentName
@@ -2150,21 +2148,32 @@ end
 
 --- transaction ACID test
 
--- edukas transaction peab läbima ACID testi
+-- edukas transaction peab läbima ACID testi:
 -- A - atomic e aatomlikus
 -- C - consistent e järjepidevus
 -- I - isolated e isoleeritus
 -- D - durable e vastupidav
 
---- Atomic - kõik tehingud transactionis on kas edukalt täidetud või need
--- lükatakse tagasi. Nt Mõlemad käsud peaksid alati õnnestuma. Andmebaas teeb
--- sellisel juhul...
+--- Atomic - kõik tehingud transactionis on kas edukalt täidetud või need 
+-- lükatakse tagasi. Nt, mõlemad käsud peaksid alati õnnesutma. Andmebaas 
+-- teeb sellisel juhul: võtab esimese update tagasi ja veeretab selle algasendisse
+-- e taastab algsed andmed
 
---- Consistent...
+--- Consistent - kõik transactioni puudutavad andmed jäetakse loogiliselt 
+-- järjepidevasse olekusse. Nt, kui laos saadaval olevaid esemete hulka 
+-- vähendatakse, siis tabelis peab olema vastav kanne. Inventuur ei saa
+-- lihtsalt kaduda
 
---- Isolated...
+--- Isolated - transaction peab andmeid mõjutama, sekkumata teistesse
+-- samaaegsetesse transactionitesse. See takistab andmete muutmist, mis 
+-- põhinevad sidumata tabelitel. Nt, muudatused kirjas, mis hiljem tagasi 
+-- muudetakse. Enamik DB-d kasutab tehingute isoleerimise säilitamiseks 
+-- lukustamist
 
---- Durable...
+--- Durable - kui muudatus on tehtud, siis see on püsiv. Kui süsteemiviga või
+-- voolukatkestus ilmneb enne käskude komplekti valmimist, siis tühistatkse need 
+-- käsud ja andmed taastakse algsesse olekusse. Taastamine toimub peale 
+-- süsteemi taaskäivitamist.
 
 
 --- subqueries
