@@ -595,7 +595,7 @@ Union all
 select * from UKCustomers
 order by Name
 
---stored procedure ---------------- STORED PROCEDURE -------------------------------
+--stored procedure ---------------- STORED PROCEDURE ------------------------------- TALLETATUD PROTSEDUUR
 --salvestatud protseduurid on SQL'i koodid, mis on salvestatud andmebaasis ja mida saab
 --käivitada, et teha mingi kindel töö ära
 create procedure spGetEmployees
@@ -931,7 +931,7 @@ select datediff(day, '04/30/2025', '01/31/2026') --annab kahe kp vahelist vahet 
 create function fnComputeAge(@DOB datetime)
 returns nvarchar(50)
 as begin
-	declare @tempdate datetime, @years int, @months int, @days int  -- @ märk töhistab muutujat
+	declare @tempdate datetime, @years int, @months int, @days int  -- @ märk tähistab muutujat
 	select @tempdate = @DOB
 
 	select @years = datediff(year, @tempdate, getdate()) - case when (month(@DOB) > month(getdate())) or (month(@DOB))
@@ -1086,7 +1086,7 @@ end
 select * from fn_MS_GetEmployees()
 
 --inline tabeli funktsioonid on paremini töötamas kuna käisitletakse vaatena
---Multi statement tabeli valued funktsioonid on nagu tavalised funktsiooid,
+--Multi statement tabeli valued funktsioonid on nagu tavalised funktsioonid,
 --pm on tegemist stored procedurega ja see võib olla aeglasem
 --sest see ei saa kasutada vaate optimeerimist e kulutab rohkem ressurssi
 select * from EmployeesWithDates
@@ -1163,7 +1163,7 @@ as begin
 	return (select Name from dbo.EmployeesWithDates where Id = @id)
 end
 
---temporary tables ------- TEMP TABLE, AJUTISED TABELID ---------
+--temporary tables ------- TEMP TABLE, AJUTISED TABELID --------- AJUTINE TABEL ------
 --need on tabelid, mis on loodud ajutiselt ja kustutatakse automaatselt
 --neid on kahte tüüpi: local temporary tables ja global temporary tables
 --#'ga algavad local ja ##'ga global temporary tables
@@ -1214,22 +1214,22 @@ Salary int,
 Gender nvarchar(10)
 )
 
-insert into EmployeeWithSalary
+insert into EmployeesWithSalary
 values (1, 'Sam', 2500, 'Male'),
 (2, 'Pam', 6500, 'Female'),
 (3, 'John', 4500, 'Male'),
 (4, 'Sara', 5500, 'Female'),
 (5, 'Todd', 3100, 'Male')
 
-select * from EmployeeWithSalary
+select * from EmployeesWithSalary
 where Salary > 5000 and Salary < 7000
 
 --loome indeksi, mis asetab palga kahanevasse järjestusse
 create index IX_Employee_Salary
-on EmployeeWithSalary(Salary desc)
+on EmployeesWithSalary(Salary desc)
 
 --proovige pärida tabelit EmployeeWithSalary ja kasutada index'it IX_Employee_Salary
-select * from EmployeeWithSalary with (index (IX_Employee_Salary))
+select * from EmployeesWithSalary with (index (IX_Employee_Salary))
 
 --indeksi kustutamine
 drop index IX_Employee_Salary on EmployeeWithSalary
@@ -1274,7 +1274,7 @@ select * from EmployeeCity
 --klastris olevad indeksid dikteerivad säilitatud andmete järjestuse tabelis ja seda saab klastrite puhul olla ainult üks
 create clustered index IX_EmployeeCity_Name
 on EmployeeCity(Name)
---annab veateate, et tabelis saab olla inult üks klastris olev indeks, kui soovid
+--annab veateate, et tabelis saab olla ainult üks klastris olev indeks, kui soovid
 --uut indeksit luua, siis kustuta olemasolev
 
 --saame luua ainult ühe klasteris oleva indeksi tabeli peale. Klastris olev indeks
@@ -1291,7 +1291,7 @@ exec sp_helpindex EmployeeCity
 Select * from EmployeeCity
 
 --Erinevused kahe indeksi vahel
---1. ainult üks klastris olev indeks saaab olll tabeli peale, mitte-klastris olevaid indekseid saab olla mittu
+--1. ainult üks klastris olev indeks saab olla tabeli peale, mitte-klastris olevaid indekseid saab olla mittu
 --2. klastris olevad indeksid on kiiremad kuna indeks peab tagasi viitama tabelile. Juhul, kui selekteeritud veerg ei ole olemas indeksis
 --3. klastris olev indeks määratleb ära tabeli ridade salvestusjärjestuse ja ei nõua kettal lisa ruumi- Samas mitte klastris olevad indeksid on
 --salvestatud tabelist eraldi ja nõuab lisa ruumi.
@@ -1367,7 +1367,7 @@ values
 (3, 'John', 'Menco', 2345, 'Male', 'London'),
 (4, 'John', 'Menco', 1234, 'Male', 'London1'),
 (4, 'John', 'Menco', 3456, 'Male', 'London1')
--- enn ignore käsku oleks kõik kolm rida tagasi lükatud, aga nüüd läks keskmine rida läbi kuna linna nimi on unikaalne
+-- enne ignore käsku oleks kõik kolm rida tagasi lükatud, aga nüüd läks keskmine rida läbi kuna linna nimi on unikaalne
 
 --view -------------VIEW , VAADE ---------------------
 --view on salvestatud SQL'i päring. Saab käsitleda ka virtuaalse tabelina
@@ -1388,7 +1388,7 @@ on Employees.DepartmentId = Department.Id
 --view päringu esile kutsumine
 select * from vEmployeesByDepartment
 
--- view ei salvesta andmeid vaikimisi seda tasub võtta, kui salvestatud virtuaalse tabelina
+-- view ei salvesta andmeid vaikimisi seda tasub võtta kui salvestatud virtuaalse tabelina
 
 -- milleks vaja:
 -- saab kasutada andmebaasi skeemi keerukuse lihtsustamiseks, mitte IT-inimesele
